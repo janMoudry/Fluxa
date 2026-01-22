@@ -1,0 +1,58 @@
+{
+  "name": "fluxa",
+  "version": "0.0.1",
+  "description": "Lightweight multi-tab and multi-frame communication layer for frontend applications.",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "tsup src/index.ts --watch",
+    "build": "tsup src/index.ts",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "prepublishOnly": "npm run clean && npm run build && npm run typecheck"
+  },
+  "keywords": [
+    "event-bus",
+    "postmessage",
+    "broadcastchannel",
+    "iframe",
+    "cross-tab",
+    "cross-frame",
+    "frontend",
+    "distributed-ui",
+    "micro-frontend",
+    "sdk",
+    "widget",
+    "communication-layer"
+  ],
+  "author": "Jan Moudrý",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/janmoudry/fluxa.git"
+  },
+  "homepage": "https://github.com/janmoudry/fluxa",
+  "bugs": {
+    "url": "https://github.com/janmoudry/fluxa/issues"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.1",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0",
+    "eslint": "^8.57.0"
+  }
+}
