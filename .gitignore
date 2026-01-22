@@ -1,2 +1,17 @@
 dist
 node_modules
+
+# Playwright artifacts
+test-results/
+playwright-report/
+blob-report/
+
+# Coverage
+coverage/
+
+# OS and logs
+.DS_Store
+*.log
+
+# TypeScript
+*.tsbuildinfo
