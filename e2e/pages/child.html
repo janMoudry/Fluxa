@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Fluxa Child</title>
+  </head>
+  <body>
+    <script type="module">
+      import { Fluxa } from '/dist/index.js';
+
+      const usp = new URLSearchParams(location.search);
+      const allow = usp.get('allow');
+      let allowedOrigins = null;
+      if (allow === '*') allowedOrigins = ['*'];
+      else if (allow === 'none') allowedOrigins = [];
+      else if (allow === 'same') allowedOrigins = [location.origin];
+      else if (allow) try { allowedOrigins = JSON.parse(allow); } catch {}
+
+      const bus = new Fluxa({
+        propagation: { frame: true, memory: true },
+        frame: { allowedOrigins: allowedOrigins ?? undefined },
+        context: { id: 'child' },
+      });
+
+      const counts = {};
+      const lastPayload = {};
+      const lastMeta = {};
+
+      function observe(event) {
+        if (!(event in counts)) counts[event] = 0;
+        return bus.on(event, (p, m) => {
+          counts[event]++;
+          lastPayload[event] = p;
+          lastMeta[event] = m;
+        });
+      }
+      function getCount(event) { return counts[event] || 0; }
+      function emit(event, payload) { bus.emit(event, payload || {}); }
+      function getLastPayload(event) { return lastPayload[event]; }
+      function getLastMeta(event) { return lastMeta[event]; }
+
+      Object.assign(window, { observe, getCount, emit, getLastPayload, getLastMeta });
+      window.__fluxa_ready__ = true;
+    </script>
+  </body>
+  </html>

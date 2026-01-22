@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Fluxa Tab</title>
+  </head>
+  <body>
+    <script type="module">
+      import { Fluxa } from '/dist/index.js';
+
+      const usp = new URLSearchParams(location.search);
+      const channel = usp.get('channel') || 'fluxa';
+      const ctx = usp.get('ctx') || 'tab';
+
+      const bus = new Fluxa({
+        propagation: { memory: true, tab: true },
+        tab: { channel },
+        context: { id: ctx },
+      });
+
+      const counts = {};
+      const lastPayload = {};
+      const lastMeta = {};
+
+      function observe(event) {
+        if (!(event in counts)) counts[event] = 0;
+        return bus.on(event, (p, m) => {
+          counts[event]++;
+          lastPayload[event] = p;
+          lastMeta[event] = m;
+        });
+      }
+
+      function getCount(event) { return counts[event] || 0; }
+      function getLastPayload(event) { return lastPayload[event]; }
+      function getLastMeta(event) { return lastMeta[event]; }
+      function emit(event, payload) { bus.emit(event, payload || {}); }
+      function clear(event) { counts[event] = 0; }
+
+      Object.assign(window, { observe, getCount, getLastPayload, getLastMeta, emit, clear });
+      window.__fluxa_ready__ = true;
+    </script>
+  </body>
+  </html>

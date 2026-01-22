@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Fluxa Host</title>
+    <style>iframe{width:600px;height:400px;border:1px solid #ddd}</style>
+  </head>
+  <body>
+    <iframe id="child"></iframe>
+    <script type="module">
+      import { Fluxa } from '/dist/index.js';
+
+      const usp = new URLSearchParams(location.search);
+      const childOrigin = usp.get('child_origin') || location.origin;
+      const allow = usp.get('allow'); // host allowed origins
+      const childAllow = usp.get('child_allow') || '*';
+
+      let allowedOrigins = null;
+      if (allow === '*') allowedOrigins = ['*'];
+      else if (allow === 'none') allowedOrigins = [];
+      else if (allow === 'same') allowedOrigins = [location.origin];
+      else if (allow) try { allowedOrigins = JSON.parse(allow); } catch {}
+
+      const bus = new Fluxa({
+        propagation: { frame: true, memory: true },
+        frame: { allowedOrigins: allowedOrigins ?? undefined },
+        context: { id: 'host' },
+      });
+
+      const iframe = document.getElementById('child');
+      iframe.src = childOrigin + '/e2e/pages/child.html?allow=' + encodeURIComponent(childAllow);
+
+      iframe.addEventListener('load', () => {
+        try {
+          bus.registerFramePeer('child', iframe.contentWindow, childOrigin);
+        } catch (e) {
+          // ignore if cross-origin prevents access; postMessage path still works
+        }
+      });
+
+      const counts = {};
+      function observe(event) {
+        if (!(event in counts)) counts[event] = 0;
+        return bus.on(event, () => { counts[event]++; });
+      }
+      function getCount(event) { return counts[event] || 0; }
+      function emit(event, payload) { bus.emit(event, payload || {}); }
+      function unregister() { bus.unregisterFramePeer('child'); }
+
+      Object.assign(window, { observe, getCount, emit, unregister });
+      window.__fluxa_ready__ = true;
+    </script>
+  </body>
+  </html>
