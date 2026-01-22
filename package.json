@@ -1,5 +1,5 @@
 {
-  "name": "fluxa",
+  "name": "@jan.moudry/fluxa",
   "version": "0.0.1",
   "description": "Lightweight multi-tab and multi-frame communication layer for frontend applications.",
   "type": "module",

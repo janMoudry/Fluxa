@@ -3,6 +3,8 @@
 Fluxa is a lightweight, type-safe communication layer for frontend applications.
 It provides a small event bus with optional propagation across memory, browser tabs, and iframe boundaries.
 
+Lightweight — ~10 KB runtime, zero dependencies.
+
 Designed for embedded widgets, micro-frontends, and apps that need cross-context event routing without Redux or heavy state layers.
 
 - Typed event bus (TypeScript generics)
