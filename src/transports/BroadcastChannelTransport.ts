@@ -1,6 +1,7 @@
-import { Transport } from "./Transport";
 import type { FluxaEnvelope } from "../core/types";
 import { safeParse, safeSerialize } from "../utils/serialize";
+
+import { Transport } from "./Transport";
 
 export class BroadcastChannelTransport extends Transport {
   readonly name = "tab" as const;

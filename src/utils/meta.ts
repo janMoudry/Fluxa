@@ -1,5 +1,6 @@
-import { createId } from "./id";
 import type { FluxaEventMeta } from "../core/types";
+
+import { createId } from "./id";
 
 export function createMeta(params: {
   sourceId?: string;

@@ -21,7 +21,8 @@
     "build": "tsup src/index.ts",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint .",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
     "test": "vitest run",
     "prepublishOnly": "npm run clean && npm run build && npm run typecheck"
   },
@@ -53,6 +54,9 @@
     "tsup": "^8.0.1",
     "typescript": "^5.4.5",
     "vitest": "^1.6.0",
-    "eslint": "^8.57.0"
+    "eslint": "^8.57.0",
+    "@typescript-eslint/eslint-plugin": "^7.8.0",
+    "@typescript-eslint/parser": "^7.8.0",
+    "eslint-plugin-import": "^2.29.1"
   }
 }

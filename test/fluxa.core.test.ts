@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+
 import { Fluxa } from "../src/core/Fluxa";
+
 import { MockBroadcastChannel } from "./helpers";
 
 type Events = {
@@ -10,18 +12,28 @@ type Events = {
 describe("Fluxa core: emit/on/off + scope + debugger", () => {
   beforeEach(() => {
     // fresh BC registry for each test
-    (globalThis as unknown as { BroadcastChannel: new (name: string) => BroadcastChannel }).BroadcastChannel =
-      MockBroadcastChannel as unknown as new (name: string) => BroadcastChannel;
+    (
+      globalThis as unknown as {
+        BroadcastChannel: new (name: string) => BroadcastChannel;
+      }
+    ).BroadcastChannel = MockBroadcastChannel as unknown as new (
+      name: string,
+    ) => BroadcastChannel;
     MockBroadcastChannel.channels.clear();
   });
 
   afterEach(() => {
-    delete (globalThis as unknown as { BroadcastChannel?: unknown }).BroadcastChannel;
+    delete (globalThis as unknown as { BroadcastChannel?: unknown })
+      .BroadcastChannel;
   });
 
   it("emits and receives via memory transport by default", () => {
     const bus = new Fluxa<Events>({ context: { id: "ctx-A" } });
-    const calls: Array<{ payload: Events["counter:inc"]; meta: import("../src/core/types").FluxaEventMeta }> = [];
+    const calls: Array<{
+      payload: Events["counter:inc"];
+      // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+      meta: import("../src/core/types").FluxaEventMeta;
+    }> = [];
     const off = bus.on("counter:inc", (payload, meta) =>
       calls.push({ payload, meta }),
     );
