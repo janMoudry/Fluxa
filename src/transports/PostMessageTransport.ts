@@ -1,6 +1,7 @@
-import { Transport } from "./Transport";
 import type { FluxaEnvelope } from "../core/types";
 import { safeParse, safeSerialize } from "../utils/serialize";
+
+import { Transport } from "./Transport";
 
 type FramePeer = {
   id: string;
@@ -37,9 +38,9 @@ export class PostMessageTransport extends Transport {
     const globalKey = `__fluxa_pm_handler_${this.channel}` as const;
 
     // If there is an existing handler for this channel, remove it first.
-    const existing = (window as unknown as Record<string, unknown>)[globalKey] as
-      | ((e: MessageEvent) => void)
-      | undefined;
+    const existing = (window as unknown as Record<string, unknown>)[
+      globalKey
+    ] as ((e: MessageEvent) => void) | undefined;
     if (existing) {
       window.removeEventListener("message", existing);
     }
@@ -68,18 +69,20 @@ export class PostMessageTransport extends Transport {
       this.receive(data);
     };
 
-    (window as unknown as Record<string, unknown>)[globalKey] = this.handler as unknown as unknown;
+    (window as unknown as Record<string, unknown>)[globalKey] = this
+      .handler as unknown as unknown;
     window.addEventListener("message", this.handler);
   }
 
   stop() {
     const globalKey = `__fluxa_pm_handler_${this.channel}` as const;
-    const current = (window as unknown as Record<string, unknown>)[globalKey] as
-      | ((e: MessageEvent) => void)
-      | undefined;
+    const current = (window as unknown as Record<string, unknown>)[
+      globalKey
+    ] as ((e: MessageEvent) => void) | undefined;
     if (this.handler && current === this.handler) {
       window.removeEventListener("message", this.handler);
-      (window as unknown as Record<string, unknown>)[globalKey] = null as unknown as unknown;
+      (window as unknown as Record<string, unknown>)[globalKey] =
+        null as unknown as unknown;
     }
     this.handler = null;
   }

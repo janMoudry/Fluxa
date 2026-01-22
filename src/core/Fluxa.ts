@@ -1,20 +1,20 @@
-import type {
-  FluxaConfig,
-  FluxaEnvelope,
-  FluxaEventMap,
-  FluxaEventMeta,
-  FluxaFilter,
-  FluxaHandler,
-  FluxaStoreBridge,
-} from "./types";
-import { EventBus } from "./EventBus";
-import { Scope } from "./Scope";
 import { Debugger } from "../utils/debugger";
 import { createMeta } from "../utils/meta";
 import { MemoryTransport } from "../transports/MemoryTransport";
 import { BroadcastChannelTransport } from "../transports/BroadcastChannelTransport";
 import { PostMessageTransport } from "../transports/PostMessageTransport";
 import type { Transport } from "../transports/Transport";
+
+import { EventBus } from "./EventBus";
+import { Scope } from "./Scope";
+import type {
+  FluxaConfig,
+  FluxaEnvelope,
+  FluxaEventMap,
+  FluxaFilter,
+  FluxaHandler,
+  FluxaStoreBridge,
+} from "./types";
 
 export class Fluxa<Events extends FluxaEventMap = FluxaEventMap> {
   private initialized = false;
@@ -190,7 +190,10 @@ export class Fluxa<Events extends FluxaEventMap = FluxaEventMap> {
 
     // Prevent re-entry loops: if this context id is already present in the
     // path and it's not the last hop (i.e., message is re-entering), ignore it.
-    if (path.includes(this.contextId) && path[path.length - 1] !== this.contextId) {
+    if (
+      path.includes(this.contextId) &&
+      path[path.length - 1] !== this.contextId
+    ) {
       return;
     }
 
