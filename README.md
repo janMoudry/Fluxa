@@ -234,7 +234,7 @@ widgetBus.emit('widget:ready', {});
 
 - `npm run build` – build with `tsup` into `dist`
 - `npm run typecheck` – `tsc --noEmit`
-- `npm run test` – `vitest` (no tests yet)
+- `npm run test` – `vitest`
 - `prepublishOnly` runs clean + build + typecheck
 
 ## Roadmap
@@ -248,4 +248,3 @@ Planned for v1.1:
 ## License
 
 MIT © Jan Moudrý
-

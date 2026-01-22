@@ -6,8 +6,10 @@
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
+  "sideEffects": false,
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     }
@@ -16,8 +18,8 @@
     "dist"
   ],
   "scripts": {
-    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
-    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --sourcemap --watch",
+    "build": "tsup src/index.ts --format cjs,esm --dts --sourcemap",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts",
@@ -28,7 +30,7 @@
     "e2e:ui": "playwright test --ui",
     "e2e:install": "playwright install",
     "e2e:serve": "node e2e/server.mjs",
-    "prepublishOnly": "npm run clean && npm run build && npm run typecheck"
+    "prepublishOnly": "npm run clean && npm run build && npm run typecheck && npm test"
   },
   "keywords": [
     "event-bus",
