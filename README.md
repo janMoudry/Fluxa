@@ -248,4 +248,4 @@ Planned for v1.1:
 ## License
 
 MIT © Jan Moudrý
-# Fluxa
+
