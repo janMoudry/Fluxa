@@ -12,6 +12,9 @@ Designed for embedded widgets, micro-frontends, and apps that need cross-context
 - Simple namespacing via `scope()`
 - Metadata filters per handler
 - Optional debugger with in/out/local log
+- History replay buffer
+- Event deduplication by ID (prevents re-propagation loops)
+- DevTools/store bridge hook
 
 ## Installation
 
@@ -176,6 +179,21 @@ bus.attachStore({
 });
 ```
 
+You can replay recent events from the in-memory history:
+
+```ts
+const bus = new Fluxa({
+  history: { enabled: true, limit: 200 },
+});
+
+bus.replayHistory((event, data) => {
+  console.log("Replay", event, data.payload, data.meta);
+});
+```
+
+Deduplication note: if you call `emit()` with a `meta.id` that was already seen in
+history, Fluxa will ignore it to prevent re-propagation loops.
+
 Quick peek at logs:
 
 ```ts
@@ -242,10 +260,7 @@ widgetBus.emit('widget:ready', {});
 ## Roadmap
 
 Planned for v1.1:
-- Event deduplication by ID
-- Optional replay buffer
 - Frame handshake helpers
-- DevTools bridge
 
 ## License
 
