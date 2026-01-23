@@ -93,4 +93,23 @@ describe("Fluxa core: emit/on/off + scope + debugger", () => {
     expect(bDirs).toContain("in");
     expect(received).toBe(1);
   });
+
+  it("dedupes emits by meta.id", () => {
+    const bus = new Fluxa<Events>({ context: { id: "ctx-A" } });
+    const calls: Array<{
+      payload: Events["counter:inc"];
+      // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+      meta: import("../src/core/types").FluxaEventMeta;
+    }> = [];
+    bus.on("counter:inc", (payload, meta) =>
+      calls.push({ payload, meta }),
+    );
+
+    const meta = { id: "evt-1", timestamp: 1 };
+    bus.emit("counter:inc", { amount: 1 }, meta);
+    bus.emit("counter:inc", { amount: 2 }, meta);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].payload.amount).toBe(1);
+  });
 });

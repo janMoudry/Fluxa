@@ -8,224 +8,280 @@ import type { Transport } from "../transports/Transport";
 import { EventBus } from "./EventBus";
 import { Scope } from "./Scope";
 import type {
-  FluxaConfig,
-  FluxaEnvelope,
-  FluxaEventMap,
-  FluxaFilter,
-  FluxaHandler,
-  FluxaStoreBridge,
+	FluxaConfig,
+	FluxaEnvelope,
+	FluxaEventMap,
+	FluxaEventMeta,
+	FluxaFilter,
+	FluxaHandler,
+	FluxaStoreBridge,
 } from "./types";
+import { History } from "./History";
 
 export class Fluxa<Events extends FluxaEventMap = FluxaEventMap> {
-  private initialized = false;
+	private initialized = false;
 
-  private readonly bus = new EventBus<Events>();
-  private readonly debugger = new Debugger();
+	private readonly bus = new EventBus<Events>();
+	private readonly debugger = new Debugger();
 
-  private readonly contextId: string;
-  private readonly contextName: string;
+	private readonly contextId: string;
+	private readonly contextName: string;
 
-  private readonly propagation: Required<
-    NonNullable<FluxaConfig["propagation"]>
-  >;
-  private readonly historyEnabled: boolean;
-  private readonly historyLimit: number;
+	private readonly propagation: Required<
+		NonNullable<FluxaConfig["propagation"]>
+	>;
+	private readonly historyEnabled: boolean;
+	private readonly historyLimit: number;
 
-  private storeBridge: FluxaStoreBridge | null = null;
+	private storeBridge: FluxaStoreBridge | null = null;
 
-  private transports: Transport[] = [];
-  private memoryTransport: MemoryTransport | null = null;
-  private tabTransport: BroadcastChannelTransport | null = null;
-  private frameTransport: PostMessageTransport | null = null;
+	private transports: Transport[] = [];
+	private memoryTransport: MemoryTransport | null = null;
+	private tabTransport: BroadcastChannelTransport | null = null;
+	private frameTransport: PostMessageTransport | null = null;
 
-  constructor(private readonly options: FluxaConfig = {}) {
-    this.contextId = options.context?.id ?? this.fallbackContextId();
-    this.contextName = options.context?.name ?? "default";
+	private history: History<Events> | null = null;
 
-    this.propagation = {
-      memory: options.propagation?.memory ?? true,
-      tab: options.propagation?.tab ?? false,
-      frame: options.propagation?.frame ?? false,
-    };
+	constructor(private readonly options: FluxaConfig = {}) {
+		this.contextId = options.context?.id ?? this.fallbackContextId();
+		this.contextName = options.context?.name ?? "default";
 
-    this.historyEnabled = options.history?.enabled ?? true;
-    this.historyLimit = options.history?.limit ?? 200;
+		this.propagation = {
+			memory: options.propagation?.memory ?? true,
+			tab: options.propagation?.tab ?? false,
+			frame: options.propagation?.frame ?? false,
+		};
 
-    if (options.debug) {
-      this.debugger.enable(this.historyLimit);
-    }
+		this.historyEnabled = options.history?.enabled ?? true;
+		this.historyLimit = options.history?.limit ?? 200;
 
-    this.setupTransports();
-    this.initialized = true;
-  }
+		if (this.historyEnabled) {
+			this.history = new History<Events>({
+				limit: this.historyLimit,
+			});
+		}
 
-  scope<P extends string>(prefix: P) {
-    this.ensureInitialized();
-    return new Scope<Events, P>(this, prefix);
-  }
+		if (options.debug) {
+			this.debugger.enable(this.historyLimit);
+		}
 
-  attachStore(bridge: FluxaStoreBridge) {
-    this.storeBridge = bridge;
-  }
+		this.setupTransports();
+		this.initialized = true;
+	}
 
-  enableDebug(limit?: number) {
-    this.debugger.enable(limit ?? this.historyLimit);
-  }
+	scope<P extends string>(prefix: P) {
+		this.ensureInitialized();
+		return new Scope<Events, P>(this, prefix);
+	}
 
-  getEventLog() {
-    return this.debugger.getLogs();
-  }
+	attachStore(bridge: FluxaStoreBridge) {
+		this.storeBridge = bridge;
+	}
 
-  destroy() {
-    for (const t of this.transports) t.stop();
-    this.transports = [];
-    this.memoryTransport = null;
-    this.tabTransport = null;
-    this.frameTransport = null;
-    this.initialized = false;
-  }
+	enableDebug(limit?: number) {
+		this.debugger.enable(limit ?? this.historyLimit);
+	}
 
-  emit<K extends keyof Events>(
-    event: K,
-    data: Events[K],
-    meta?: Record<string, unknown>,
-  ) {
-    this.ensureInitialized();
+	getEventLog() {
+		return this.debugger.getLogs();
+	}
 
-    const eventName = String(event);
+	destroy() {
+		for (const t of this.transports) t.stop();
+		this.transports = [];
+		this.memoryTransport = null;
+		this.tabTransport = null;
+		this.frameTransport = null;
+		this.initialized = false;
+	}
 
-    const baseMeta = createMeta({
-      sourceId:
-        typeof window !== "undefined" ? window.location.href : undefined,
-      sourceLocationFile: meta?.sourceLocationFile as string | undefined,
-      path: [this.contextId],
-      extra: meta,
-    });
+	emit<K extends keyof Events>(
+		event: K,
+		data: Events[K],
+		meta?: FluxaEventMeta,
+	) {
+		this.ensureInitialized();
+		const isPropagatedAlready = this.ensureIsNotPropagatedAlready(meta);
+		if (isPropagatedAlready) return;
 
-    const envelope: FluxaEnvelope = {
-      type: "fluxa:event",
-      event: eventName,
-      payload: {
-        data,
-        meta: baseMeta,
-      },
-    };
+		const eventName = String(event);
 
-    if (this.propagation.memory && this.memoryTransport) {
-      this.debugger.push({ direction: "local", envelope });
-      this.memoryTransport.send(envelope);
-    }
+		const baseMeta = createMeta({
+			sourceId:
+				typeof window !== "undefined"
+					? window.location.href
+					: undefined,
+			sourceLocationFile: meta?.sourceLocationFile as string | undefined,
+			path: [this.contextId],
+			extra: meta,
+		});
 
-    if (this.propagation.tab && this.tabTransport) {
-      this.debugger.push({ direction: "out", envelope });
-      this.tabTransport.send(envelope);
-    }
+		const envelope: FluxaEnvelope = {
+			type: "fluxa:event",
+			event: eventName,
+			payload: {
+				data,
+				meta: baseMeta,
+			},
+		};
 
-    if (this.propagation.frame && this.frameTransport) {
-      this.debugger.push({ direction: "out", envelope });
-      this.frameTransport.send(envelope);
-    }
-  }
+		if (this.propagation.memory && this.memoryTransport) {
+			this.debugger.push({ direction: "local", envelope });
+			this.memoryTransport.send(envelope);
+		}
 
-  on<K extends keyof Events>(
-    event: K,
-    handler: FluxaHandler<Events[K]>,
-    filter?: FluxaFilter,
-  ) {
-    this.ensureInitialized();
-    return this.bus.on(event, handler, filter);
-  }
+		if (this.propagation.tab && this.tabTransport) {
+			this.debugger.push({ direction: "out", envelope });
+			this.tabTransport.send(envelope);
+		}
 
-  off<K extends keyof Events>(event: K, handler: FluxaHandler<Events[K]>) {
-    this.ensureInitialized();
-    this.bus.off(event, handler);
-  }
+		if (this.propagation.frame && this.frameTransport) {
+			this.debugger.push({ direction: "out", envelope });
+			this.frameTransport.send(envelope);
+		}
 
-  registerFramePeer(id: string, targetWindow: Window, origin: string) {
-    this.ensureInitialized();
-    if (!this.frameTransport) return;
-    this.frameTransport.registerPeer(id, targetWindow, origin);
-  }
+		this.history?.set(event, {
+			payload: data,
+			meta: baseMeta,
+		});
+	}
 
-  unregisterFramePeer(id: string) {
-    this.ensureInitialized();
-    if (!this.frameTransport) return;
-    this.frameTransport.unregisterPeer(id);
-  }
+	on<K extends keyof Events>(
+		event: K,
+		handler: FluxaHandler<Events[K]>,
+		filter?: FluxaFilter,
+	) {
+		this.ensureInitialized();
+		return this.bus.on(event, handler, filter);
+	}
 
-  private setupTransports() {
-    if (this.propagation.memory) {
-      this.memoryTransport = new MemoryTransport();
-      this.attachTransport(this.memoryTransport);
-    }
+	off<K extends keyof Events>(event: K, handler: FluxaHandler<Events[K]>) {
+		this.ensureInitialized();
+		this.bus.off(event, handler);
+	}
 
-    if (this.propagation.tab) {
-      const channel = this.options.tab?.channel ?? "fluxa";
-      this.tabTransport = new BroadcastChannelTransport(channel);
-      this.attachTransport(this.tabTransport);
-    }
+	registerFramePeer(id: string, targetWindow: Window, origin: string) {
+		this.ensureInitialized();
+		if (!this.frameTransport) return;
+		this.frameTransport.registerPeer(id, targetWindow, origin);
+	}
 
-    if (this.propagation.frame) {
-      const channel = this.options.frame?.channel ?? "fluxa";
-      this.frameTransport = new PostMessageTransport({
-        allowedOrigins: this.options.frame?.allowedOrigins,
-        channel,
-      });
-      this.attachTransport(this.frameTransport);
-    }
+	unregisterFramePeer(id: string) {
+		this.ensureInitialized();
+		if (!this.frameTransport) return;
+		this.frameTransport.unregisterPeer(id);
+	}
 
-    for (const t of this.transports) t.start();
-  }
+	replayHistory(
+		handler: (
+			event: keyof Events,
+			data: {
+				payload: Events[keyof Events];
+				meta: FluxaEventMeta;
+			},
+		) => void,
+		{
+			reEmit = false,
+		}: {
+			reEmit?: boolean;
+		} = {},
+	) {
+		this.ensureInitialized();
+		if (!this.history) return;
+		this.history.replay(handler);
 
-  private attachTransport(transport: Transport) {
-    transport.attach((envelope) => this.receive(envelope));
-    this.transports.push(transport);
-  }
+		if (reEmit) {
+			this.history.replay((event, data) => {
+				this.emit(event, data.payload, {
+					...data.meta,
+					replayed: true,
+				});
+			});
+		}
+	}
 
-  private receive(envelope: FluxaEnvelope) {
-    const meta = envelope.payload.meta;
+	private ensureIsNotPropagatedAlready(meta?: FluxaEventMeta) {
+		if (!this.history) return;
+		if (!meta) return;
 
-    const path = Array.isArray(meta.path) ? meta.path : [];
-    meta.path = path;
+		const isPropagated = this.history.get(meta.id);
 
-    // Prevent re-entry loops: if this context id is already present in the
-    // path and it's not the last hop (i.e., message is re-entering), ignore it.
-    if (
-      path.includes(this.contextId) &&
-      path[path.length - 1] !== this.contextId
-    ) {
-      return;
-    }
+		return isPropagated;
+	}
 
-    if (path[path.length - 1] !== this.contextId) {
-      meta.path = [...path, this.contextId];
-    }
+	private setupTransports() {
+		if (this.propagation.memory) {
+			this.memoryTransport = new MemoryTransport();
+			this.attachTransport(this.memoryTransport);
+		}
 
-    this.debugger.push({ direction: "in", envelope });
+		if (this.propagation.tab) {
+			const channel = this.options.tab?.channel ?? "fluxa";
+			this.tabTransport = new BroadcastChannelTransport(channel);
+			this.attachTransport(this.tabTransport);
+		}
 
-    const eventKey = envelope.event as keyof Events;
-    this.bus.emit(
-      eventKey,
-      envelope.payload.data as Events[keyof Events],
-      meta,
-    );
+		if (this.propagation.frame) {
+			const channel = this.options.frame?.channel ?? "fluxa";
+			this.frameTransport = new PostMessageTransport({
+				allowedOrigins: this.options.frame?.allowedOrigins,
+				channel,
+			});
+			this.attachTransport(this.frameTransport);
+		}
 
-    if (this.historyEnabled) {
-      this.storeBridge?.receive(envelope);
-    }
-  }
+		for (const t of this.transports) t.start();
+	}
 
-  private ensureInitialized() {
-    if (!this.initialized) {
-      throw new Error("Fluxa is not initialized.");
-    }
-  }
+	private attachTransport(transport: Transport) {
+		transport.attach((envelope) => this.receive(envelope));
+		this.transports.push(transport);
+	}
 
-  private fallbackContextId() {
-    const base =
-      typeof window !== "undefined"
-        ? `${window.location.origin}|${window.location.pathname}`
-        : "node";
-    return `${base}|${Math.random().toString(16).slice(2)}`;
-  }
+	private receive(envelope: FluxaEnvelope) {
+		const meta = envelope.payload.meta;
+
+		const path = Array.isArray(meta.path) ? meta.path : [];
+		meta.path = path;
+
+		// Prevent re-entry loops: if this context id is already present in the
+		// path and it's not the last hop (i.e., message is re-entering), ignore it.
+		if (
+			path.includes(this.contextId) &&
+			path[path.length - 1] !== this.contextId
+		) {
+			return;
+		}
+
+		if (path[path.length - 1] !== this.contextId) {
+			meta.path = [...path, this.contextId];
+		}
+
+		this.debugger.push({ direction: "in", envelope });
+
+		const eventKey = envelope.event as keyof Events;
+		this.bus.emit(
+			eventKey,
+			envelope.payload.data as Events[keyof Events],
+			meta,
+		);
+
+		if (this.historyEnabled) {
+			this.storeBridge?.receive(envelope);
+		}
+	}
+
+	private ensureInitialized() {
+		if (!this.initialized) {
+			throw new Error("Fluxa is not initialized.");
+		}
+	}
+
+	private fallbackContextId() {
+		const base =
+			typeof window !== "undefined"
+				? `${window.location.origin}|${window.location.pathname}`
+				: "node";
+		return `${base}|${Math.random().toString(16).slice(2)}`;
+	}
 }

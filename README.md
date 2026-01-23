@@ -16,17 +16,17 @@ Designed for embedded widgets, micro-frontends, and apps that need cross-context
 ## Installation
 
 ```
-npm install fluxa
+npm install @jan.moudry/fluxa
 # or
-yarn add fluxa
+yarn add @jan.moudry/fluxa
 # or
-pnpm add fluxa
+pnpm add @jan.moudry/fluxa
 ```
 
 The package ships ESM and CJS builds:
 
-- ESM import: `import { Fluxa } from 'fluxa'`
-- CJS require: `const { Fluxa } = require('fluxa')`
+- ESM import: `import { Fluxa } from '@jan.moudry/fluxa'`
+- CJS require: `const { Fluxa } = require('@jan.moudry/fluxa')`
 
 ## Quick start
 

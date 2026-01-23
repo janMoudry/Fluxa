@@ -35,9 +35,10 @@
       function getLastPayload(event) { return lastPayload[event]; }
       function getLastMeta(event) { return lastMeta[event]; }
       function emit(event, payload) { bus.emit(event, payload || {}); }
+      function emitWithMeta(event, payload, meta) { bus.emit(event, payload || {}, meta); }
       function clear(event) { counts[event] = 0; }
 
-      Object.assign(window, { observe, getCount, getLastPayload, getLastMeta, emit, clear });
+      Object.assign(window, { observe, getCount, getLastPayload, getLastMeta, emit, emitWithMeta, clear });
       window.__fluxa_ready__ = true;
     </script>
   </body>

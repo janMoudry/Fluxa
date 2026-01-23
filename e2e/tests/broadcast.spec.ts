@@ -5,6 +5,7 @@ type TestWin = Window & {
   observe: (ev: string) => unknown;
   getCount: (ev: string) => number;
   emit: (ev: string, payload?: unknown) => void;
+  emitWithMeta: (ev: string, payload: unknown, meta: { id: string }) => void;
 };
 
 test("BroadcastChannel delivers across tabs on same channel", async ({
@@ -39,6 +40,49 @@ test("BroadcastChannel delivers across tabs on same channel", async ({
     )
     .toBe(1);
   // Sender should have only local delivery (no echo from BC)
+  await expect
+    .poll(async () =>
+      pageA.evaluate(() => (window as unknown as TestWin).getCount("ping")),
+    )
+    .toBe(1);
+
+  await ctx.close();
+});
+
+test("Id dedupe prevents re-broadcasting the same event", async ({
+  browser,
+  baseURL,
+}) => {
+  const ctx = await browser.newContext();
+  const pageA = await ctx.newPage();
+  const pageB = await ctx.newPage();
+
+  const channel = `ch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  await pageA.goto(`${baseURL}/e2e/pages/tab.html?channel=${channel}&ctx=A`);
+  await pageB.goto(`${baseURL}/e2e/pages/tab.html?channel=${channel}&ctx=B`);
+  await pageA.waitForFunction(
+    () => (window as unknown as TestWin).__fluxa_ready__ === true,
+  );
+  await pageB.waitForFunction(
+    () => (window as unknown as TestWin).__fluxa_ready__ === true,
+  );
+
+  await pageB.evaluate(() => (window as unknown as TestWin).observe("ping"));
+  await pageA.evaluate(() => (window as unknown as TestWin).observe("ping"));
+
+  await pageA.evaluate(() =>
+    (window as unknown as TestWin).emitWithMeta("ping", { n: 1 }, { id: "evt-1" }),
+  );
+  await pageA.evaluate(() =>
+    (window as unknown as TestWin).emitWithMeta("ping", { n: 2 }, { id: "evt-1" }),
+  );
+
+  await expect
+    .poll(async () =>
+      pageB.evaluate(() => (window as unknown as TestWin).getCount("ping")),
+    )
+    .toBe(1);
   await expect
     .poll(async () =>
       pageA.evaluate(() => (window as unknown as TestWin).getCount("ping")),
